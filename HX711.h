@@ -24,18 +24,15 @@ const uint8_t HX711_MEDIAN_MODE = 0x01;
 // medavg = average of the middle "half" of sorted elements
 // in medavg mode only between 3 and 15 samples are allowed.
 const uint8_t HX711_MEDAVG_MODE = 0x02;
-// runavg = running average
-const uint8_t HX711_RUNAVG_MODE = 0x03;
 
 
 class HX711
 {
 public:
-  HX711();
-  ~HX711();
+  HX711(float* measurements, uint8_t measurementsCount, uint8_t dataPin, uint8_t clockPin);
 
   // fixed gain 128 for now
-  void     begin(uint8_t dataPin, uint8_t clockPin);
+  void     begin();
 
   void     reset();
 
@@ -54,20 +51,15 @@ public:
   float    read();
   // get average of multiple raw reads
   // times = 1 or more
-  float    read_average(uint8_t times = 10);
+  float    read_average();
 
   // get median of multiple raw reads  
   // times = 3..15 - odd numbers preferred
-  float    read_median(uint8_t times = 7);  
+  float    read_median();  
 
   // get average of "middle half" of multiple raw reads.
   // times = 3..15 - odd numbers preferred
-  float    read_medavg(uint8_t times = 7);  
-
-  // get running average over times measurements.
-  // the weight alpha can be set to any value between 0 and 1
-  // times = 1 or more.
-  float    read_runavg(uint8_t times = 7, float alpha = 0.5);  
+  float    read_medavg();  
 
 
   // get set mode for get_value() and indirect get_units().
@@ -75,19 +67,17 @@ public:
   void     set_average_mode() { _mode = HX711_AVERAGE_MODE; };
   void     set_median_mode()  { _mode = HX711_MEDIAN_MODE; };
   void     set_medavg_mode()  { _mode = HX711_MEDAVG_MODE; };
-  // set_run_avg will use a default alpha of 0.5.
-  void     set_runavg_mode()  { _mode = HX711_RUNAVG_MODE; };
   uint8_t  get_mode()         { return _mode; };
  
   // corrected for offset
-  float    get_value(uint8_t times = 1);
+  float    get_value();
   // converted to proper units.
-  float    get_units(uint8_t times = 1);
+  float    get_units();
 
 
   // TARE
   // call tare to calibrate zero
-  void     tare(uint8_t times = 10)     { _offset = read_average(times); };
+  void     tare()                       { _offset = read_average(); };
   float    get_tare()                   { return -_offset * _scale; };
   bool     tare_set()                   { return _offset != 0; };
 
@@ -110,7 +100,7 @@ public:
   // put a known weight on the scale 
   // call calibrate_scale(weight) 
   // scale is calculated.
-  void     calibrate_scale(uint16_t weight, uint8_t times = 10);
+  void     calibrate_scale(uint16_t weight);
 
 
   // POWER MANAGEMENT
@@ -123,14 +113,14 @@ public:
 
 
   // PRICING  (idem calories?)
-  float    get_price(uint8_t times = 1) { return get_units(times) * _price; };
+  float    get_price()                       { return get_units() * _price; };
   void     set_unit_price(float price = 1.0) { _price = price; };
-  float    get_unit_price() { return _price; };
+  float    get_unit_price()                  { return _price; };
 
 
 private:
-  uint8_t  _dataPin;
-  uint8_t  _clockPin;
+  uint8_t const _dataPin;
+  uint8_t const _clockPin;
 
   uint8_t  _gain     = 128;     // default channel A
   long     _offset   = 0;
@@ -139,7 +129,9 @@ private:
   float    _price    = 0;
   uint8_t  _mode     = 0;
 
-  void     _insertSort(float * array, uint8_t size);
+  float* const measurements_       = nullptr;
+  uint8_t const measurementsCount_ = 0;
+  uint8_t measurementIndex_        = 0;
 };
 
 // -- END OF FILE --

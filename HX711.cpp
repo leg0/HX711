@@ -15,22 +15,22 @@
 
 
 #include "HX711.h"
+#include <assert.h>
 
-
-HX711::HX711()
+HX711::HX711(float* measurements, uint8_t measurementsCount, uint8_t dataPin, uint8_t clockPin)
+  : _dataPin{dataPin}
+  , _clockPin{clockPin}
+  , measurements_{measurements}
+  , measurementsCount_{measurementsCount}
 {
+  assert(0 < measurementsCount && measurementsCount <= 15);
+  assert(measurements != nullptr);
   reset();
 }
 
 
-HX711::~HX711() {}
-
-
-void HX711::begin(uint8_t dataPin, uint8_t clockPin)
+void HX711::begin()
 {
-  _dataPin = dataPin;
-  _clockPin = clockPin;
-
   pinMode(_dataPin, INPUT);
   pinMode(_clockPin, OUTPUT);
   digitalWrite(_clockPin, LOW);
@@ -92,14 +92,17 @@ float HX711::read()
   if (v.data[2] & 0x80) v.data[3] = 0xFF;
 
   _lastRead = millis();
-  return 1.0 * v.value;
+  float const res = measurements_[measurementIndex_] = 1.f * v.value;
+  if (++measurementIndex_ >= measurementsCount_)
+    measurementIndex_ = 0;
+  return res;
 }
 
 
 // assumes tare() has been set.
-void HX711::calibrate_scale(uint16_t weight, uint8_t times)
+void HX711::calibrate_scale(uint16_t weight)
 {
-  _scale = (1.0 * weight) / (read_average(times) - _offset);
+  _scale = (1.0 * weight) / (read_average() - _offset);
 }
 
 
@@ -134,122 +137,90 @@ bool HX711::wait_ready_timeout(uint32_t timeout, uint32_t ms)
 }
 
 
-float HX711::read_average(uint8_t times) 
+float HX711::read_average()
 {
-  if (times < 1) times = 1;
+  assert(measurementsCount_ >= 1);
   float sum = 0;
-  for (uint8_t i = 0; i < times; i++) 
+  for (uint8_t i = 0; i < measurementsCount_; ++i) 
   {
-    sum += read();
-    yield();
+    sum += measurements_[i];
   }
-  return sum / times;
+  return sum / measurementsCount_;
+}
+
+static void heap_push(float* heap, uint8_t& heap_size, float value);
+static float heap_pop(float* heap, uint8_t& heap_size);
+static float heap_pushpop(float* heap, uint8_t heap_size, float value);
+
+float HX711::read_median()
+{
+  assert(measurementsCount_ <= 15);
+  assert(measurementsCount_ >= 3);
+  float s[8];
+  uint8_t heap_size = 0;
+  for (uint8_t i = 0; i < (measurementsCount_)/2; ++i) 
+  {
+    heap_push(s, heap_size, measurements_[i]);
+  }
+  for (uint8_t i = (measurementsCount_)/2; i+1 < measurementsCount_; ++i)
+  {
+    heap_pushpop(s, heap_size, measurements_[i]);
+  }
+  float res = heap_pushpop(s, heap_size, measurements_[measurementsCount_-1]);
+  return (res + s[0]) / 2.f;
 }
 
 
-float HX711::read_median(uint8_t times) 
+float HX711::read_medavg()
 {
-  if (times > 15) times = 15;
-  if (times < 3)  times = 3;
+  assert(measurementsCount_ <= 15);
+  assert(measurementsCount_ >= 3);
   float s[15];
-  for (uint8_t i = 0; i < times; i++) 
+  uint8_t heap_size = 0;
+  for (uint8_t i = 0; i < measurementsCount_; ++i) 
   {
-    s[i] = read();
-    yield();
+    heap_push(s, heap_size, measurements_[i]);
   }
-  _insertSort(s, times);
-  if (times & 0x01) return s[times/2];
-  return (s[times/2] + s[times/2+1])/2;
-}
-
-
-float HX711::read_medavg(uint8_t times) 
-{
-  if (times > 15) times = 15;
-  if (times < 3)  times = 3;
-  float s[15];
-  for (uint8_t i = 0; i < times; i++) 
-  {
-    s[i] = read();
-    yield();
-  }
-  _insertSort(s, times);
   float sum = 0;
   // iterate over 1/4 to 3/4 of the array
-  uint8_t cnt = 0;
-  uint8_t first = (times + 2) / 4;
-  uint8_t last  = times - first - 1;
-  for (uint8_t i = first; i <= last; i++)  // !! include last too
+  uint8_t const first = (measurementsCount_ + 2) / 4;
+  for (uint8_t i = 0; i < first; ++i)
+    heap_pop(s, heap_size);
+  uint8_t const last  = measurementsCount_ - first;
+  for (uint8_t i = first; i < last; i++)
   {
-    sum += s[i];
-    cnt++;
+    sum += heap_pop(s, heap_size);
   }
+  uint8_t const cnt = last-first;
   return sum/cnt;
 }
 
 
-float HX711::read_runavg(uint8_t times, float alpha) 
-{
-  if (times < 1)  times = 1;
-  if (alpha < 0)  alpha = 0;
-  if (alpha > 1)  alpha = 1;
-  float val = read();
-  for (uint8_t i = 1; i < times; i++) 
-  {
-    val += alpha * (read() - val);
-    yield();
-  }
-  return val;
-}
 
-
-void HX711::_insertSort(float * array, uint8_t size)
+float HX711::get_value() 
 {
-  uint8_t t, z;
-  float temp;
-  for (t = 1; t < size; t++) 
-  {
-    z = t;
-    temp = array[z];
-    while( (z > 0) && (temp < array[z - 1] )) 
+  float const raw = [this]() {
+    switch(_mode)
     {
-      array[z] = array[z - 1];
-      z--;
+      case HX711_MEDAVG_MODE:
+        return read_medavg();
+
+      case HX711_MEDIAN_MODE:
+        return read_median();
+
+      case HX711_AVERAGE_MODE:
+      default:
+        return read_average();
     }
-    array[z] = temp;
-    yield();
-  }
+  }();
+  return raw - _offset;
 }
 
 
-float HX711::get_value(uint8_t times) 
+float HX711::get_units()
 {
-  float raw;
-  switch(_mode)
-  {
-    case HX711_RUNAVG_MODE:
-      raw = read_runavg(times);
-      break;
-    case HX711_MEDAVG_MODE:
-      raw = read_medavg(times);
-      break;
-    case HX711_MEDIAN_MODE:
-      raw = read_median(times);
-      break;
-    case HX711_AVERAGE_MODE:
-    default:
-      raw = read_average(times);
-      break;
-  }
-  return raw - _offset;
-};
-
-
-float HX711::get_units(uint8_t times)
-{
-  float units = get_value(times) * _scale;
-  return units;
-};
+  return get_value() * _scale;
+}
 
 
 void HX711::power_down() 
@@ -262,6 +233,83 @@ void HX711::power_down()
 void HX711::power_up() 
 {
   digitalWrite(_clockPin, LOW);
+}
+
+static constexpr uint8_t parent_of(uint8_t node) noexcept
+{
+  return (node-1)/2;
+}
+
+static constexpr void swap(float& a, float& b) noexcept
+{
+  float tmp = a;
+  a = b;
+  b = tmp;
+}
+
+static void heap_push(float* heap, uint8_t& heap_size, float value) noexcept
+{
+  heap[heap_size++] = value;
+
+  uint8_t i = heap_size-1;
+  while (i > 0)
+  {
+    uint8_t parent = parent_of(i);
+    if (heap[parent] < heap[i])
+    {
+      swap(heap[parent], heap[i]);
+      i = parent;
+    }
+    else
+      break;
+  }
+}
+
+static constexpr uint8_t left_child(uint8_t node) noexcept
+{
+  return 2*node+1;
+}
+
+static constexpr uint8_t right_child(uint8_t node) noexcept
+{
+  return 2*node+2;
+}
+
+static void heap_sink(float* heap, uint8_t heap_size) noexcept
+{
+  uint8_t i = 0;
+  while (true)
+  {
+    uint8_t const l = left_child(i);
+    if (l >= heap_size)
+      break;
+    uint8_t max_child_idx = l;
+    uint8_t const r = right_child(i);
+    if (r < heap_size && heap[r] > heap[l])
+      max_child_idx = r;
+    if (heap[i] < heap[max_child_idx])
+      swap(heap[i], heap[max_child_idx]);
+    i = max_child_idx;
+  }
+}
+
+static float heap_pop(float* heap, uint8_t& heap_size) noexcept
+{
+  float const res = heap[0];
+  heap[0] = heap[--heap_size];
+  heap_sink(heap, heap_size);
+  return res;
+}
+
+static float heap_pushpop(float* heap, uint8_t heap_size, float value) noexcept
+{
+  if (heap_size == 0 || value > heap[0])
+    return value;
+
+  float const res = heap[0];
+  heap[0] = value;
+  heap_sink(heap, heap_size);
+  return res;
 }
 
 // -- END OF FILE --
