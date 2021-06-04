@@ -240,7 +240,7 @@ static constexpr uint8_t parent_of(uint8_t node) noexcept
   return (node-1)/2;
 }
 
-static constexpr void swap(float& a, float& b) noexcept
+static void swap(float& a, float& b) noexcept
 {
   float tmp = a;
   a = b;
