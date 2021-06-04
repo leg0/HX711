@@ -28,8 +28,8 @@
 #include "HX711.h"
 
 
-uint8_t dataPin = 6;
-uint8_t clockPin = 7;
+uint8_t const dataPin = 6;
+uint8_t const clockPin = 7;
 
 
 unittest_setup()
@@ -46,7 +46,7 @@ unittest(test_constructor)
   fprintf(stderr, "VERSION: %s\n", HX711_LIB_VERSION);
 
   float buffer;
-  HX711 scale{ &buffer, dataPin, clockPin };
+  HX711 scale{ &buffer, 1, dataPin, clockPin };
   scale.begin();
 
   assertTrue(scale.is_ready()); // pins are default LOW apparently.
