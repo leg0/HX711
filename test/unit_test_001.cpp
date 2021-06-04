@@ -45,8 +45,9 @@ unittest(test_constructor)
 {
   fprintf(stderr, "VERSION: %s\n", HX711_LIB_VERSION);
 
-  HX711 scale;
-  scale.begin(dataPin, clockPin);
+  float buffer;
+  HX711 scale{ &buffer, dataPin, clockPin };
+  scale.begin();
 
   assertTrue(scale.is_ready()); // pins are default LOW apparently.
   // default not read
@@ -55,8 +56,8 @@ unittest(test_constructor)
 
 unittest(test_gain)
 {
-  HX711 scale;
-  scale.begin(dataPin, clockPin);
+  float buffer;
+  HX711 scale{ &buffer, 1, dataPin, clockPin };
 
   // default
   assertEqual(128, scale.get_gain());
@@ -77,8 +78,8 @@ unittest(test_gain)
 
 unittest(test_scale)
 {
-  HX711 scale;
-  scale.begin(dataPin, clockPin);
+  float buffer;
+  HX711 scale{&buffer, 1, dataPin, clockPin};
 
   // default
   assertEqualFloat(1.0, scale.get_scale(), 0.001);
@@ -95,8 +96,9 @@ unittest(test_scale)
 
 unittest(test_offset)
 {
-  HX711 scale;
-  scale.begin(dataPin, clockPin);
+  float buffer;
+  HX711 scale{&buffer, 1, dataPin, clockPin};
+  scale.begin();
 
   // default offset
   assertEqual(0, scale.get_offset());
@@ -113,8 +115,8 @@ unittest(test_offset)
 
 unittest(test_tare)
 {
-  HX711 scale;
-  scale.begin(dataPin, clockPin);
+  float buffer;
+  HX711 scale{&buffer, 1, dataPin, clockPin};
 
   // default tare
   assertEqual(0, scale.get_tare());
@@ -127,8 +129,9 @@ unittest(test_tare)
 
 unittest(test_unit_price)
 {
-  HX711 scale;
-  scale.begin(dataPin, clockPin);
+  float buffer;
+  HX711 scale{&buffer, 1, dataPin, clockPin};
+  scale.begin();
 
   assertEqual(0, scale.get_unit_price());
 
@@ -144,14 +147,17 @@ unittest(test_unit_price)
 
 unittest(test_operational_mode)
 {
-  HX711 scale;
-  scale.begin(dataPin, clockPin);
-
+  float buffer;
+  
+  HX711 scale{&buffer, 1, dataPin, clockPin};
   assertEqual(0x00, scale.get_mode());
+
   scale.set_medavg_mode();
   assertEqual(0x02, scale.get_mode());
+  
   scale.set_median_mode();
   assertEqual(0x01, scale.get_mode());
+  
   scale.set_average_mode();
   assertEqual(0x00, scale.get_mode());
 }

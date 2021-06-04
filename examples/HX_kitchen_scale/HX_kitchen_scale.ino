@@ -11,10 +11,10 @@
 
 #include "HX711.h"
 
-HX711 scale;
-
 uint8_t dataPin = 6;
 uint8_t clockPin = 7;
+float buffer[10];
+HX711 scale{buffer, 10, dataPin, clockPin};
 
 
 void setup()
@@ -25,10 +25,10 @@ void setup()
   Serial.println(HX711_LIB_VERSION);
   Serial.println();
 
-  scale.begin(dataPin, clockPin);
+  scale.begin();
 
   Serial.print("UNITS: ");
-  Serial.println(scale.get_units(10));
+  Serial.println(scale.get_units());
   
   Serial.println("\nEmpty the scale, press a key to continue");
   while(!Serial.available());
@@ -36,16 +36,16 @@ void setup()
   
   scale.tare();
   Serial.print("UNITS: ");
-  Serial.println(scale.get_units(10));
+  Serial.println(scale.get_units());
 
 
   Serial.println("\nPut 1000 gram in the scale, press a key to continue");
   while(!Serial.available());
   while(Serial.available()) Serial.read();
 
-  scale.calibrate_scale(1000, 5);
+  scale.calibrate_scale(1000);
   Serial.print("UNITS: ");
-  Serial.println(scale.get_units(10));
+  Serial.println(scale.get_units());
 
   Serial.println("\nScale is calibrated, press a key to continue");
   while(!Serial.available());
@@ -56,7 +56,7 @@ void setup()
 void loop()
 {
   Serial.print("UNITS: ");
-  Serial.println(scale.get_units(10));
+  Serial.println(scale.get_units());
   delay(250);
 }
 

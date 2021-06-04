@@ -47,6 +47,7 @@ public:
   // max timeout
   bool     wait_ready_timeout(uint32_t timeout = 1000, uint32_t ms = 0);
 
+private:
   // raw read
   float    read();
   // get average of multiple raw reads
@@ -61,7 +62,7 @@ public:
   // times = 3..15 - odd numbers preferred
   float    read_medavg();  
 
-
+public:
   // get set mode for get_value() and indirect get_units().
   // in median and medavg mode only 3..15 samples are allowed.
   void     set_average_mode() { _mode = HX711_AVERAGE_MODE; };

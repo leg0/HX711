@@ -11,10 +11,10 @@
 
 #include "HX711.h"
 
-HX711 scale;
-
-uint8_t dataPin = 6;
-uint8_t clockPin = 7;
+uint8_t const dataPin = 6;
+uint8_t const clockPin = 7;
+float buffer;
+HX711 scale{ &buffer, 1, dataPin, clockPin };
 
 uint32_t start, stop;
 volatile float f;
@@ -27,7 +27,7 @@ void setup()
   Serial.println(HX711_LIB_VERSION);
   Serial.println();
 
-  scale.begin(dataPin, clockPin);
+  scale.begin();
 
   // TODO find a nice solution for this calibration..
   // loadcell factor 20 KG
@@ -55,7 +55,7 @@ void measure()
     if (scale.is_ready())
     {
       count++;
-      scale.get_units(1);
+      scale.get_units();
     }
   }
   Serial.print("calls per minute: ");

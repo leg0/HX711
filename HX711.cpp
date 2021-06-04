@@ -148,9 +148,9 @@ float HX711::read_average()
   return sum / measurementsCount_;
 }
 
-static void heap_push(float* heap, uint8_t& heap_size, float value);
-static float heap_pop(float* heap, uint8_t& heap_size);
-static float heap_pushpop(float* heap, uint8_t heap_size, float value);
+static void heap_push(float* heap, uint8_t& heap_size, float value) noexcept;
+static float heap_pop(float* heap, uint8_t& heap_size) noexcept;
+static float heap_pushpop(float* heap, uint8_t heap_size, float value) noexcept;
 
 float HX711::read_median()
 {

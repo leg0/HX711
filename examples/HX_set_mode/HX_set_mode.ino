@@ -11,10 +11,10 @@
 
 #include "HX711.h"
 
-HX711 scale;
-
-uint8_t dataPin = 6;
-uint8_t clockPin = 7;
+uint8_t const dataPin = 6;
+uint8_t const clockPin = 7;
+float buffer[7];
+HX711 scale{buffer, 7, dataPin, clockPin};
 
 uint32_t start, stop;
 volatile float f;
@@ -27,7 +27,7 @@ void setup()
   Serial.println(HX711_LIB_VERSION);
   Serial.println();
 
-  scale.begin(dataPin, clockPin);
+  scale.begin();
 
   // TODO find a nice solution for this calibration..
   // loadcell factor 20 KG
@@ -47,7 +47,7 @@ void setup()
   f = 0;
   for (int i = 0; i < 100; i++)
   {
-    f = scale.get_value(7);
+    f = scale.get_value();
   }
   stop = micros();
   Serial.print("100x set_average_mode = ");
@@ -64,7 +64,7 @@ void setup()
   f = 0;
   for (int i = 0; i < 100; i++)
   {
-    f = scale.get_value(7);
+    f = scale.get_value();
   }
   stop = micros();
   Serial.print("100x set_median_mode = ");
@@ -81,7 +81,7 @@ void setup()
   f = 0;
   for (int i = 0; i < 100; i++)
   {
-    f = scale.get_value(7);
+    f = scale.get_value();
   }
   stop = micros();
   Serial.print("100x set_medavg_mode = ");

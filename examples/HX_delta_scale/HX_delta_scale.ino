@@ -13,10 +13,11 @@
 
 #include "HX711.h"
 
-HX711 scale;
+uint8_t const dataPin = 6;
+uint8_t const clockPin = 7;
+float buffer[10];
+HX711 scale{ buffer, 10, dataPin, clockPin };
 
-uint8_t dataPin = 6;
-uint8_t clockPin = 7;
 
 float w1, w2, previous = 0;
 
@@ -28,10 +29,10 @@ void setup()
   Serial.println(HX711_LIB_VERSION);
   Serial.println();
 
-  scale.begin(dataPin, clockPin);
+  scale.begin();
 
   Serial.print("UNITS: ");
-  Serial.println(scale.get_units(10));
+  Serial.println(scale.get_units());
 
   // loadcell factor 20 KG
   // scale.set_scale(127.15);
@@ -40,13 +41,13 @@ void setup()
   scale.tare();
 
   Serial.print("UNITS: ");
-  Serial.println(scale.get_units(10));
+  Serial.println(scale.get_units());
 }
 
 void loop()
 {
   // read until stable
-  w1 = scale.get_units(10);
+  w1 = scale.get_units();
   delay(100);
   w2 = scale.get_units();
   while (abs(w1 - w2) > 10)

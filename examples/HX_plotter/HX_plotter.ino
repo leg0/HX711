@@ -11,12 +11,11 @@
 
 #include "HX711.h"
 
-HX711 scale;
-
 uint8_t dataPin = 6;
 uint8_t clockPin = 7;
+float buffer[5];
+HX711 scale{ buffer, 5, dataPin, clockPin };
 
-uint32_t start, stop;
 volatile float f;
 
 void setup()
@@ -27,7 +26,7 @@ void setup()
   // Serial.println(HX711_LIB_VERSION);
   // Serial.println();
 
-  scale.begin(dataPin, clockPin);
+  scale.begin();
 
   // TODO find a nice solution for this calibration..
   // loadcell factor 20 KG
@@ -41,7 +40,7 @@ void setup()
 void loop()
 {
   // continuous scale 4x per second
-  f = scale.get_units(5);
+  f = scale.get_units();
   Serial.println(f);
   delay(250);
 }
